@@ -1,1 +1,14 @@
-
+{
+  "name": "claude-code-test",
+  "version": "1.0.0",
+  "description": "Claude Code AI assistant testing repository",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0"
+  },
+  "license": "MIT"
+}
