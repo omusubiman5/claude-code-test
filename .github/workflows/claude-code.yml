@@ -1,35 +1,60 @@
-name: Claude Code Test
+name: Claude Code
 on:
     issue_comment:
         types: [created]
+    pull_request_review_comment:
+        types: [created]
+    issues:
+        types: [opened, assigned]
+    pull_request:
+        types: [opened, edited]
+    pull_request_review:
+        types: [submitted]
 
 jobs:
-    test:
-        if: contains(github.event.comment.body, '@claude')
+    claude:
+        if: |
+            (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+            (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+            (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+            (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude'))) ||
+            (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '@claude'))
         runs-on: self-hosted
         permissions:
             contents: write
+            pull-requests: write
             issues: write
+            id-token: write
+        timeout-minutes: 60
         steps:
             - name: Checkout repository
               uses: actions/checkout@v4
-              
-            - name: Test Claude API
-              run: |
-                echo "Claude API テスト開始"
-                echo "Access Token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}"
-                echo "Refresh Token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}"
-                echo "Expires At: ${{ secrets.CLAUDE_EXPIRES_AT }}"
-                echo "GitHub Token: ${{ secrets.GH_PAT }}"
-                
-            - name: Add comment to issue
-              uses: actions/github-script@v7
               with:
-                github-token: ${{ secrets.GH_PAT }}
-                script: |
-                  github.rest.issues.createComment({
-                    issue_number: context.issue.number,
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    body: '🤖 テスト用ボットです。Claude Code の代わりに応答しています。'
-                  })
+                  fetch-depth: 1
+                  clean: true
+
+            - name: Run Claude Code
+              uses: anthropics/claude-code-action@beta
+              with:
+                  github_token: ${{ secrets.GH_PAT }}
+                  allowed_tools: 'mcp__github_file_ops__create_issue,mcp__github_file_ops__update_issue_comment,mcp__github_file_ops__create_pull_request,mcp__github_file_ops__list_issues,mcp__github_file_ops__commit_files,mcp__github_file_ops__delete_files,Bash,Read,Write,Edit,Glob,Grep'
+                  use_oauth: 'true'
+                  claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+                  claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+                  claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
+                  custom_instructions: |
+                    必ず日本語で応答してください。
+                    コメント、説明、エラーメッセージもすべて日本語にしてください。
+                    コードのコメントも日本語で書いてください。
+                    
+                    あなたはプログラミングアシスタントとして、以下のことができます：
+                    - コードのレビューと改善提案
+                    - バグの発見と修正
+                    - 新機能の実装
+                    - ファイルの作成・編集・削除
+                    - プロジェクト構造の改善
+                    - テストコードの作成
+                    
+                    親切で詳細な説明を心がけ、ユーザーの学習を支援してください。
+              continue-on-error: true
+              timeout-minutes: 50
