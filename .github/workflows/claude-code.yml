@@ -1,31 +1,35 @@
-name: Claude Code
+name: Claude Code Test
 on:
     issue_comment:
         types: [created]
-    issues:
-        types: [opened]
 
 jobs:
-    claude:
-        if: contains(github.event.comment.body, '@claude') || contains(github.event.issue.body, '@claude')
+    test:
+        if: contains(github.event.comment.body, '@claude')
         runs-on: self-hosted
         permissions:
             contents: write
-            pull-requests: write
             issues: write
-        timeout-minutes: 30
         steps:
             - name: Checkout repository
               uses: actions/checkout@v4
-
-            - name: Run Claude Code
-              uses: Akira-Papa/claude-code-action@main
+              
+            - name: Test Claude API
+              run: |
+                echo "Claude API テスト開始"
+                echo "Access Token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}"
+                echo "Refresh Token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}"
+                echo "Expires At: ${{ secrets.CLAUDE_EXPIRES_AT }}"
+                echo "GitHub Token: ${{ secrets.GH_PAT }}"
+                
+            - name: Add comment to issue
+              uses: actions/github-script@v7
               with:
-                  github_token: ${{ secrets.GITHUB_TOKEN }}
-                  claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
-                  claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
-                  claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
-                  custom_instructions: |
-                    必ず日本語で応答してください。
-                    コメント、説明、エラーメッセージもすべて日本語にしてください。
-              continue-on-error: true
+                github-token: ${{ secrets.GH_PAT }}
+                script: |
+                  github.rest.issues.createComment({
+                    issue_number: context.issue.number,
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    body: '🤖 テスト用ボットです。Claude Code の代わりに応答しています。'
+                  })
